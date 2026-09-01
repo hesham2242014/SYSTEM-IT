@@ -11,26 +11,56 @@
 - **تحقق كامل من البيانات**: حقول مطلوبة، تفرّد الرقم الوظيفي والرقم القومي والبريد، ومنع تاريخ تعيين مستقبلي — مع رسائل خطأ بالعربية.
 - **حالات وظيفية**: على رأس العمل، في إجازة، موقوف، انتهت الخدمة.
 
+## المتطلبات
+
+- PHP 8.3+ مع امتداد `pdo_mysql`
+- MySQL 8.0+ أو MariaDB 10.6+
+- Composer
+
 ## التشغيل
+
+أنشئ قاعدة البيانات أولًا:
+
+```sql
+CREATE DATABASE system_it CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+> `utf8mb4` ضرورية لتخزين البيانات العربية بشكل صحيح.
+
+ثم:
 
 ```bash
 composer install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite
+# عدّل DB_USERNAME و DB_PASSWORD في .env بما يناسب خادمك
 php artisan migrate --seed     # ينشئ الجداول مع بيانات تجريبية
 php artisan serve
 ```
 
 ثم افتح <http://127.0.0.1:8000>.
 
-قاعدة البيانات الافتراضية هي **SQLite**. للتشغيل على MySQL، عدّل `DB_*` في ملف `.env`.
+### إعدادات قاعدة البيانات
+
+قاعدة البيانات هي **MySQL** (`DB_CONNECTION=mysql`)، بمحرك InnoDB وترميز `utf8mb4_unicode_ci`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=system_it
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
 ## الاختبارات
 
 ```bash
 php artisan test
 ```
+
+الاختبارات تعمل على SQLite في الذاكرة (`phpunit.xml`) لتكون سريعة ولا تحتاج خادمًا،
+والكود نفسه يعمل على المحركين لأن كل الوصول للبيانات يتم عبر Eloquent والـ migrations.
 
 ## هيكل المشروع
 
@@ -45,6 +75,7 @@ php artisan test
 | `app/Http/Controllers/DashboardController.php` | إحصائيات لوحة التحكم |
 | `app/Http/Requests/` | قواعد التحقق وأسماء الحقول بالعربية |
 | `database/migrations/` | جداول `departments` و `employees` |
+| `config/database.php` | الاتصال الافتراضي `mysql` |
 | `database/seeders/DatabaseSeeder.php` | 5 أقسام و 10 موظفين كبيانات تجريبية |
 | `resources/views/` | واجهات Blade عربية (RTL) |
 | `public/css/app.css` | التنسيقات — بدون أي اعتماد على مكتبات خارجية |
