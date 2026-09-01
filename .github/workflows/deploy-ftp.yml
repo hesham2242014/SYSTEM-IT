@@ -1,0 +1,62 @@
+name: Deploy to cPanel (FTP)
+
+# بديل لمن لا يملك SSH على استضافته.
+# افتراضيًا يعمل يدويًا فقط. لتفعيله تلقائيًا مع كل push، أزل التعليق عن
+# قسم push بالأسفل — واحرص وقتها على تعطيل ملف deploy.yml حتى لا ينشر الاثنان معًا.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: النشر عبر FTP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تجهيز PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, intl
+          coverage: none
+
+      - name: تثبيت الاعتماديات ثم الاختبارات
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
+      # عبر FTP لا يمكن تشغيل composer على الخادم، لذلك نبني vendor هنا
+      # بنسخة الإنتاج ونرفعها ضمن الملفات.
+      - name: بناء اعتماديات الإنتاج
+        run: |
+          rm -f .env
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+
+      - name: الرفع إلى الخادم
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          server-dir: ${{ secrets.FTP_APP_PATH }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/storage/logs/**
+            **/storage/framework/cache/**
+            **/storage/framework/sessions/**
+            **/storage/framework/views/**
+            **/.env
+            **/phpunit.xml
+            **/deploy.sh

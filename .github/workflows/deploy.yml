@@ -1,0 +1,78 @@
+name: Deploy to cPanel
+
+# يعمل تلقائيًا مع كل push على الفرع المنشور، أو يدويًا من تبويب Actions.
+on:
+  push:
+    branches:
+      - main
+      - claude/employee-data-laravel-r0cx0h
+  workflow_dispatch:
+
+# يمنع تشغيل نشرتين في نفس الوقت على نفس الخادم.
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: الاختبارات
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تجهيز PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, intl
+          coverage: none
+
+      - name: تثبيت الاعتماديات
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: تشغيل الاختبارات
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
+  deploy:
+    name: النشر على cPanel
+    needs: test          # لا ينشر إلا إذا نجحت كل الاختبارات
+    runs-on: ubuntu-latest
+    steps:
+      - name: النشر عبر SSH
+        env:
+          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          SSH_HOST: ${{ secrets.CPANEL_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_USER }}
+          SSH_PORT: ${{ secrets.CPANEL_PORT || '22' }}
+          KNOWN_HOSTS: ${{ secrets.CPANEL_KNOWN_HOSTS }}
+          APP_PATH: ${{ secrets.CPANEL_APP_PATH }}
+          PHP_BIN: ${{ vars.CPANEL_PHP_BIN || 'php' }}
+          COMPOSER_BIN: ${{ vars.CPANEL_COMPOSER_BIN || 'composer' }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # نفضّل بصمة الخادم المخزّنة في الأسرار؛ وإلا نجلبها من الخادم.
+          if [ -n "${KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "set -euo pipefail; \
+             cd '$APP_PATH'; \
+             git fetch --all --prune; \
+             git reset --hard 'origin/${GITHUB_REF_NAME}'; \
+             DEPLOY_BRANCH='${GITHUB_REF_NAME}' \
+             PHP_BIN='$PHP_BIN' \
+             COMPOSER_BIN='$COMPOSER_BIN' \
+             SKIP_GIT=true \
+             bash deploy.sh"

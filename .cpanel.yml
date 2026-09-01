@@ -1,0 +1,9 @@
+---
+# يُستخدم مع أداة cPanel المدمجة: Git Version Control ← Manage ← Deploy HEAD Commit.
+# النشر التلقائي الكامل يتم عبر .github/workflows/deploy.yml؛ هذا الملف
+# لتشغيل نفس خطوات النشر يدويًا من داخل لوحة cPanel عند الحاجة.
+deployment:
+  tasks:
+    - export DEPLOY_PATH=/home/CPANEL_USER/system-it
+    - cd $DEPLOY_PATH
+    - /bin/bash deploy.sh

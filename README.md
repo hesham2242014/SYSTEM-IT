@@ -53,6 +53,12 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
+## النشر
+
+النشر تلقائي: كل `git push` على الفرع المنشور يرفع التعديل على الموقع بعد نجاح
+الاختبارات. خطوات الإعداد لمرة واحدة على cPanel موجودة في
+**[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ## الاختبارات
 
 ```bash
@@ -76,6 +82,8 @@ php artisan test
 | `app/Http/Requests/` | قواعد التحقق وأسماء الحقول بالعربية |
 | `database/migrations/` | جداول `departments` و `employees` |
 | `config/database.php` | الاتصال الافتراضي `mysql` |
+| `deploy.sh` | سكربت النشر على الخادم |
+| `.github/workflows/` | النشر التلقائي عبر GitHub Actions |
 | `database/seeders/DatabaseSeeder.php` | 5 أقسام و 10 موظفين كبيانات تجريبية |
 | `resources/views/` | واجهات Blade عربية (RTL) |
 | `public/css/app.css` | التنسيقات — بدون أي اعتماد على مكتبات خارجية |
